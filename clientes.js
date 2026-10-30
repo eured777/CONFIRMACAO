@@ -1,6 +1,6 @@
 
 const clientes = [
-  { codigo: "11", nome: "JULIO", numero: "91999266351" },
+  { codigo: "10", nome: "JULIO", numero: "91999266351" },
   { codigo: "158209", nome: "MAICON DA SILVA PEREIRA", numero: "9192967376" },
   { codigo: "175483", nome: "FARMA BARRETO", numero: "9185387628" },
   { codigo: "178383", nome: "DIOLENO FREITAS DE OLIVEIRA", numero: "9192966899" },
