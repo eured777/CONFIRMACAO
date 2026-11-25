@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Cliente</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; margin-bottom: 20px; }
+    img {
+      width: 50%;
+      margin: auto;
+      display: block;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #25d366;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #1ebc57; }
+    button.secundario {
+      background-color: #fff;
+      color: #1d7a43;
+      border: 2px solid #25d366;
+      margin-top: 12px;
+    }
+    button.secundario:hover { background-color: #f0fff5; }
+    .linha {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .linha-pequena { width: 100px; }
+    .status {
+      display: none;
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .status.ok    { display: block; background: #e6f9ee; color: #1d7a43; }
+    .status.novo  { display: block; background: #e8f1ff; color: #1a4f9c; }
+    .status.erro  { display: block; background: #fdecea; color: #a12622; }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .container { padding: 20px 15px; }
+      input, button { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Cadastro / Edição de Cliente</h2>
+    <img src="logo.png" alt="Logo">
+
+    <div class="linha">
+      <div class="linha-pequena">
+        <label for="codigo">Código:</label>
+        <input type="text" id="codigo" placeholder="Ex: 11" />
+      </div>
+      <div style="flex: 1;">
+        <label for="nome">Nome do Cliente:</label>
+        <input type="text" id="nome" placeholder="Digite o nome do cliente" />
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <label for="numero">Número do Cliente (com DDI):</label>
+    <input type="text" id="numero" placeholder="+55..." />
+
+    <button id="btnSalvar">💾 Salvar Cliente</button>
+    <button id="btnExportar" class="secundario">📥 Exportar clientes.js</button>
+  </div>
+
+  <script src="clientes.js"></script>
+<script>
+  const CHAVE = "clientesEditados";
+
+  const inputCodigo = document.getElementById("codigo");
+  const inputNome = document.getElementById("nome");
+  const inputNumero = document.getElementById("numero");
+  const statusEl = document.getElementById("status");
+
+  function lerEditados() {
+    try {
+      return JSON.parse(localStorage.getItem(CHAVE) || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Junta clientes.js com as alterações salvas neste navegador.
+  // Códigos repetidos no clientes.js: só o primeiro é substituído, os demais ficam como estão.
+  function montarLista() {
+    const editados = lerEditados();
+    const porCodigo = {};
+    editados.forEach(e => porCodigo[e.codigo] = e);
+
+    const usados = new Set();
+    const lista = [];
+
+    clientes.forEach(c => {
+      if (!c.codigo) return;
+      if (porCodigo[c.codigo] && !usados.has(c.codigo)) {
+        lista.push({ ...porCodigo[c.codigo] });
+        usados.add(c.codigo);
+      } else {
+        lista.push({ codigo: c.codigo, nome: c.nome, numero: c.numero });
+      }
+    });
+
+    // clientes novos (código que não existe no clientes.js)
+    editados.forEach(e => {
+      if (!clientes.some(c => c.codigo === e.codigo)) lista.push(e);
+    });
+
+    return lista;
+  }
+
+  function mostrarStatus(tipo, texto) {
+    statusEl.className = "status " + tipo;
+    statusEl.textContent = texto;
+  }
+
+  function limparStatus() {
+    statusEl.className = "status";
+    statusEl.textContent = "";
+  }
+
+  // Ao digitar o código: puxa nome e número se existir, senão deixa para cadastrar
+  inputCodigo.addEventListener("input", function () {
+    const codigo = this.value.trim();
+    if (!codigo) {
+      limparStatus();
+      return;
+    }
+    const achado = montarLista().find(c => c.codigo === codigo);
+    if (achado) {
+      inputNome.value = achado.nome;
+      inputNumero.value = achado.numero;
+      mostrarStatus("ok", "Cliente encontrado. Altere o que precisar e salve.");
+    } else {
+      inputNome.value = "";
+      inputNumero.value = "";
+      mostrarStatus("novo", "Código não encontrado. Preencha os dados para cadastrar.");
+    }
+  });
+
+  document.getElementById("btnSalvar").addEventListener("click", function () {
+    const codigo = inputCodigo.value.trim();
+    const nome = inputNome.value.trim();
+    const numero = inputNumero.value.trim();
+
+    if (!codigo || !nome || !numero) {
+      mostrarStatus("erro", "Preencha código, nome e número.");
+      return;
+    }
+
+    const digitos = numero.replace(/\D/g, "");
+    if (digitos.length < 10 || digitos.length > 11) {
+      if (!confirm(`O número tem ${digitos.length} dígitos (esperado 10 ou 11, com DDD). Salvar mesmo assim?`)) {
+        return;
+      }
+    }
+
+    const editados = lerEditados().filter(e => e.codigo !== codigo);
+    editados.push({ codigo, nome, numero });
+    localStorage.setItem(CHAVE, JSON.stringify(editados));
+
+    inputCodigo.value = "";
+    inputNome.value = "";
+    inputNumero.value = "";
+    mostrarStatus("ok", "Salvo neste navegador. Para valer na tela de pedidos, exporte o clientes.js e substitua o arquivo atual.");
+  });
+
+  document.getElementById("btnExportar").addEventListener("click", function () {
+    const lista = montarLista();
+    const linhas = lista.map(c =>
+      `  { codigo: ${JSON.stringify(c.codigo)}, nome: ${JSON.stringify(c.nome)}, numero: ${JSON.stringify(c.numero)} },`
+    );
+    const conteudo = "const clientes = [\n" + linhas.join("\n") + "\n];\n";
+
+    const blob = new Blob([conteudo], { type: "text/javascript;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "clientes.js";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+</script>
+</body>
+</html>
